@@ -33,7 +33,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             @Override
             public void onMapClick(LatLng latLng) {
                 MarkerOptions newMarkerOptions = new MarkerOptions();
-                newMarkerOptions.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher));
+                newMarkerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.pin));
                 newMarkerOptions.title("My place");
                 newMarkerOptions.snippet("I declare this my teritory!");
                 newMarkerOptions.position(latLng);
