@@ -9,6 +9,9 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.AudioManager;
+import android.media.SoundPool;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -27,6 +30,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
@@ -40,6 +44,8 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     LocationListener mLocationListener;
     LocationManager mLocationManager;
     Marker mCurrLocationMarker = null;
+    SoundPool mSoundPool; boolean mLoaded = false;
+    HashMap<Integer, Integer> mSoundMap = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +54,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         this.initialize();
         this.mLocationManager = (LocationManager) this.getSystemService(LOCATION_SERVICE);
         this.mLocationListener = new SimpleLocationListener();
+        this.loadSounds();
     }
 
     private void initialize() {
@@ -61,8 +68,30 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 newMarkerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.pin));
                 newMarkerOptions.position(latLng);
                 mGoogleMap.addMarker(newMarkerOptions);
+                if(mLoaded==true) playSound(R.raw.vup);
             }
         };
+    }
+
+    private void loadSounds() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            this.mSoundPool = new SoundPool.Builder().setMaxStreams(10).build();
+        } else {
+            this.mSoundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 0);
+        }
+        this.mSoundPool.setOnLoadCompleteListener(new SoundPool.OnLoadCompleteListener() {
+            @Override
+            public void onLoadComplete(SoundPool soundPool, int sampleId, int status) {
+                Log.d("Test", String.valueOf(sampleId));
+                mLoaded = true;
+            }
+        });
+        this.mSoundMap.put(R.raw.vup, this.mSoundPool.load(this, R.raw.vup, 1));
+    }
+
+    void playSound(int selectedSound){
+        int soundID = this.mSoundMap.get(selectedSound);
+        this.mSoundPool.play(soundID, 1,1,1,0,1f);
     }
 
     @Override
