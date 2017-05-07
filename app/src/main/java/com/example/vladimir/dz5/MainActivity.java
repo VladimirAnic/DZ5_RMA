@@ -1,8 +1,14 @@
 package com.example.vladimir.dz5;
 
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Criteria;
 import android.location.Geocoder;
@@ -10,14 +16,20 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.media.AudioManager;
+import android.media.RingtoneManager;
 import android.media.SoundPool;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import com.google.android.gms.maps.GoogleMap;
@@ -29,16 +41,20 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends Activity implements OnMapReadyCallback {
+public class MainActivity extends Activity implements OnMapReadyCallback, View.OnClickListener {
 
     GoogleMap mGoogleMap;
     MapFragment mMapFragment;
     TextView tvLocationDisplay;
+    Button bTakePicture;
     private GoogleMap.OnMapClickListener mCustomOnMapClickListener;
     private static final int REQUEST_LOCATION_PERMISSION = 10;
     LocationListener mLocationListener;
@@ -46,6 +62,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     Marker mCurrLocationMarker = null;
     SoundPool mSoundPool; boolean mLoaded = false;
     HashMap<Integer, Integer> mSoundMap = new HashMap<>();
+    private static final int CAMERA_REQUEST = 1888;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +77,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     private void initialize() {
         this.mMapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.fGoogleMap);
         this.tvLocationDisplay = (TextView) this.findViewById(R.id.tvLocationDisplay);
+        this.bTakePicture = (Button) this.findViewById(R.id.bTakePicture);
         this.mMapFragment.getMapAsync(this);
         this.mCustomOnMapClickListener = new GoogleMap.OnMapClickListener() {
             @Override
@@ -71,6 +89,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 if(mLoaded==true) playSound(R.raw.vup);
             }
         };
+        this.bTakePicture.setOnClickListener(this);
     }
 
     private void loadSounds() {
@@ -235,6 +254,56 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     }
                 })
                 .show();
+    }
+
+    @Override
+    public void onClick(View v) {
+        Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        startActivityForResult(cameraIntent, CAMERA_REQUEST);
+
+    }
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == CAMERA_REQUEST && resultCode == Activity.RESULT_OK) {
+            Bitmap photo = (Bitmap) data.getExtras().get("data");
+            sendNotification(saveBitmap(photo));
+        }
+    }
+
+    private File saveBitmap(Bitmap bitmap) {
+        File imagePath = new File(Environment.getExternalStorageDirectory() + "/screenshot.png");
+        FileOutputStream fos;
+        try {
+            fos = new FileOutputStream(imagePath);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+            fos.flush();
+            fos.close();
+        } catch (FileNotFoundException e) {
+            Log.e("GREC", e.getMessage(), e);
+        } catch (IOException e) {
+            Log.e("GREC", e.getMessage(), e);
+        }
+        return imagePath;
+    }
+
+    private void sendNotification(File imageFile) {
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_VIEW);
+        Uri uri = Uri.fromFile(imageFile);
+        intent.setDataAndType(uri, "image/*");
+        PendingIntent notificationPendingIntent = PendingIntent.getActivity(
+                this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this);
+        notificationBuilder.setAutoCancel(true)
+                .setContentTitle("Picture Taken")
+                .setContentText("You have taken a picture!!!")
+                .setSmallIcon(R.drawable.pin)
+                .setContentIntent(notificationPendingIntent)
+                .setLights(Color.RED, 2000, 1000)
+                .setVibrate(new long[]{1000, 1000, 1000})
+                .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
+        Notification notification = notificationBuilder.build();
+        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        notificationManager.notify(0, notification);
     }
 
     private class SimpleLocationListener implements LocationListener{
